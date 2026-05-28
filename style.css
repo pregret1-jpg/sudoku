@@ -1,0 +1,298 @@
+:root {
+    --bg-color: #f0f2f5;
+    --container-bg: #ffffff;
+    --text-color: #333;
+    --primary-color: #4a90e2;
+    --border-color: #333;
+    --cell-border: #ccc;
+    --selected-bg: #e2eefd;
+    --related-bg: #f5f7f9;
+    --fixed-text: #000;
+    --user-text: #4a90e2;
+    --error-bg: #fee2e2;
+    --error-text: #ef4444;
+    --memo-text: #666;
+    --numpad-btn-bg: #ffffff;
+    --numpad-erase-bg: #f8f9fa;
+}
+
+[data-theme="dark"] {
+    --bg-color: #121212;
+    --container-bg: #1e1e1e;
+    --text-color: #e0e0e0;
+    --primary-color: #6ba4e8;
+    --border-color: #ffffff;
+    --cell-border: #444444;
+    --selected-bg: #1a365d;
+    --related-bg: #2d3748;
+    --fixed-text: #ffffff;
+    --user-text: #6ba4e8;
+    --error-bg: #4a1d1d;
+    --error-text: #fca5a5;
+    --memo-text: #aaa;
+    --numpad-btn-bg: #2d2d2d;
+    --numpad-erase-bg: #3a3a3a;
+}
+
+body {
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+}
+
+.container {
+    background-color: var(--container-bg);
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    width: 100%;
+    max-width: 500px;
+    text-align: center;
+}
+
+h1 {
+    margin-bottom: 1.5rem;
+    color: var(--primary-color);
+}
+
+.controls {
+    margin-bottom: 1.5rem;
+}
+
+.info {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+.actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+select, button {
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: 1px solid var(--cell-border);
+    background-color: var(--container-bg);
+    color: var(--text-color);
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+#new-game-btn {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    transition: background-color 0.2s;
+}
+
+#new-game-btn:hover {
+    background-color: #357abd;
+}
+
+.ux-tip {
+    text-align: center; 
+    margin: 0.5rem 0 1rem 0; 
+    font-size: 0.85rem; 
+    color: var(--memo-text); 
+    line-height: 1.4;
+}
+
+.sudoku-grid {
+    display: grid;
+    grid-template-columns: repeat(9, 1fr);
+    border: 2px solid var(--border-color);
+    margin: 0 auto 1.5rem;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+}
+
+.cell {
+    border: 1px solid var(--cell-border);
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.5rem;
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.1s;
+}
+
+.memo-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    width: 100%;
+    height: 100%;
+    padding: 2px;
+    box-sizing: border-box;
+}
+
+.memo-item {
+    font-size: 0.6rem;
+    color: var(--memo-text);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    line-height: 1;
+}
+
+/* 3x3 Block Borders */
+.cell:nth-child(3n) { border-right: 1px solid var(--cell-border); }
+.cell:nth-child(3n):not(:nth-child(9n)) { border-right: 2px solid var(--border-color); }
+.cell:nth-child(n+19):nth-child(-n+27),
+.cell:nth-child(n+46):nth-child(-n+54) {
+    border-bottom: 2px solid var(--border-color);
+}
+
+.cell.fixed { font-weight: bold; color: var(--fixed-text); }
+.cell.user-input { color: var(--user-text); }
+.cell.selected { background-color: var(--selected-bg); }
+.cell.related { background-color: var(--related-bg); }
+.cell.error { background-color: var(--error-bg); color: var(--error-text); }
+.cell.same-number { background-color: rgba(255, 235, 59, 0.25); }
+
+/* 💡 넘버패드 6열 레이아웃 배치 수정 */
+.number-pad {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    margin-top: 1rem;
+}
+
+.numpad-btn {
+    padding: 12px;
+    border: 1px solid var(--cell-border);
+    background-color: var(--numpad-btn-bg);
+    color: var(--text-color);
+    border-radius: 8px;
+    font-size: 1.2rem;
+    font-weight: 600;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.numpad-btn:hover {
+    background-color: var(--selected-bg);
+    border-color: var(--primary-color);
+}
+
+/* 지우기 버튼과 되돌리기 버튼 하단 정렬 스타일 */
+.numpad-btn[data-number="erase"] {
+    grid-column: span 2;
+    background-color: var(--numpad-erase-bg);
+}
+
+#undo-btn {
+    grid-column: span 2;
+    background-color: var(--numpad-erase-bg);
+}
+
+.message {
+    margin-top: 1rem;
+    font-weight: 600;
+    min-height: 1.5rem;
+}
+
+/* --- Custom Restore Modal Styles --- */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    display: none; /* Toggled to flex by JS */
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal-overlay .modal-content {
+    background-color: var(--container-bg);
+    color: var(--text-color);
+    padding: 2.2rem 2rem;
+    border-radius: 16px;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+    max-width: 380px;
+    width: 88%;
+    text-align: center;
+    border: 1px solid var(--cell-border);
+    animation: modalFadeIn 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.modal-overlay h2 {
+    color: var(--primary-color);
+    margin-top: 0;
+    margin-bottom: 0.8rem;
+    font-size: 1.5rem;
+}
+
+.modal-overlay p {
+    font-size: 1rem;
+    line-height: 1.6;
+    margin-bottom: 1.8rem;
+    color: var(--text-color);
+}
+
+.modal-overlay .modal-buttons {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+
+.modal-overlay button {
+    padding: 12px 24px;
+    font-weight: bold;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    border: none;
+    transition: all 0.2s;
+}
+
+#restore-yes-btn {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+#restore-yes-btn:hover {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+}
+
+#restore-no-btn.cancel-btn {
+    background-color: #e2e8f0;
+    color: #475569;
+}
+
+[data-theme="dark"] #restore-no-btn.cancel-btn {
+    background-color: #334155;
+    color: #cbd5e1;
+}
+
+#restore-no-btn.cancel-btn:hover {
+    filter: brightness(0.9);
+    transform: translateY(-1px);
+}
+
+@keyframes modalFadeIn {
+    from { opacity: 0; transform: scale(0.92) translateY(-15px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@media (max-width: 400px) {
+    .container { padding: 1rem; }
+    .cell { font-size: 1.2rem; }
+}
