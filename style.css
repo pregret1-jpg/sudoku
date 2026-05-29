@@ -355,3 +355,23 @@ select, button {
     from { transform: translateY(0); }
     to { transform: translateY(-10px); }
 }
+
+/* --- Completed Number Pad Button Styles (Option B) --- */
+.numpad-btn.completed-disabled {
+    opacity: 0.25;
+    pointer-events: none;
+    cursor: default;
+    position: relative;
+    border-color: var(--cell-border);
+    background-color: var(--numpad-erase-bg);
+}
+
+.numpad-btn.completed-disabled::after {
+    content: "✓";
+    position: absolute;
+    top: 2px;
+    right: 5px;
+    font-size: 0.75rem;
+    color: #10b981;
+    font-weight: bold;
+}

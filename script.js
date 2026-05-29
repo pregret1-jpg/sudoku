@@ -274,6 +274,32 @@ class SudokuGame {
             const c = parseInt(cell.dataset.col);
             this.renderCell(cell, r, c);
         });
+        this.updateNumpadStatus();
+    }
+
+    updateNumpadStatus() {
+        const counts = Array(10).fill(0);
+        for (let r = 0; r < 9; r++) {
+            for (let c = 0; c < 9; c++) {
+                const val = this.board[r][c];
+                if (val >= 1 && val <= 9) {
+                    counts[val]++;
+                }
+            }
+        }
+        document.querySelectorAll('.numpad-btn').forEach(btn => {
+            const valAttr = btn.dataset.number;
+            if (valAttr && valAttr !== 'erase') {
+                const numVal = parseInt(valAttr);
+                if (numVal >= 1 && numVal <= 9) {
+                    if (counts[numVal] >= 9) {
+                        btn.classList.add('completed-disabled');
+                    } else {
+                        btn.classList.remove('completed-disabled');
+                    }
+                }
+            }
+        });
     }
 
     renderCell(cell, r, c) {
