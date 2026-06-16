@@ -246,25 +246,200 @@ class SudokuGame {
         }
     }
 
+    countSolutions(tempBoard, limit = 2) {
+        let solutionsCount = 0;
+        
+        const solve = (grid) => {
+            if (solutionsCount >= limit) return;
+            
+            let row = -1;
+            let col = -1;
+            let minCandidates = 10;
+            
+            // MRV(Minimum Remaining Values) 휴리스틱으로 속도 최적화
+            for (let r = 0; r < 9; r++) {
+                for (let c = 0; c < 9; c++) {
+                    if (grid[r][c] === 0) {
+                        let candidates = 0;
+                        for (let val = 1; val <= 9; val++) {
+                            if (this.isValid(grid, r, c, val)) candidates++;
+                        }
+                        if (candidates < minCandidates) {
+                            minCandidates = candidates;
+                            row = r;
+                            col = c;
+                        }
+                    }
+                }
+            }
+            
+            if (row === -1) {
+                solutionsCount++;
+                return;
+            }
+            
+            for (let val = 1; val <= 9; val++) {
+                if (this.isValid(grid, row, col, val)) {
+                    grid[row][col] = val;
+                    solve(grid);
+                    grid[row][col] = 0;
+                }
+            }
+        };
+        
+        const gridCopy = tempBoard.map(row => [...row]);
+        solve(gridCopy);
+        return solutionsCount;
+    }
+
+    isLogicallySolvable(board) {
+        const grid = board.map(row => [...row]);
+        let changed = true;
+        
+        while (changed) {
+            changed = false;
+            
+            // 1. Naked Singles 검사 (특정 칸에 들어갈 숫자가 단 하나인 경우)
+            for (let r = 0; r < 9; r++) {
+                for (let c = 0; c < 9; c++) {
+                    if (grid[r][c] === 0) {
+                        let validNums = [];
+                        for (let num = 1; num <= 9; num++) {
+                            if (this.isValid(grid, r, c, num)) validNums.push(num);
+                        }
+                        if (validNums.length === 1) {
+                            grid[r][c] = validNums[0];
+                            changed = true;
+                        }
+                    }
+                }
+            }
+            if (changed) continue;
+            
+            // 2. Hidden Singles 검사 (행/열/박스 내에서 특정 숫자가 들어갈 수 있는 유일한 칸 찾기)
+            // 가로줄 검사
+            for (let r = 0; r < 9; r++) {
+                for (let num = 1; num <= 9; num++) {
+                    let possibleCols = [];
+                    for (let c = 0; c < 9; c++) {
+                        if (grid[r][c] === 0 && this.isValid(grid, r, c, num)) possibleCols.push(c);
+                    }
+                    if (possibleCols.length === 1) {
+                        grid[r][possibleCols[0]] = num;
+                        changed = true;
+                    }
+                }
+            }
+            if (changed) continue;
+            
+            // 세로줄 검사
+            for (let c = 0; c < 9; c++) {
+                for (let num = 1; num <= 9; num++) {
+                    let possibleRows = [];
+                    for (let r = 0; r < 9; r++) {
+                        if (grid[r][c] === 0 && this.isValid(grid, r, c, num)) possibleRows.push(r);
+                    }
+                    if (possibleRows.length === 1) {
+                        grid[possibleRows[0]][c] = num;
+                        changed = true;
+                    }
+                }
+            }
+            if (changed) continue;
+            
+            // 3x3 박스 검사
+            for (let b = 0; b < 9; b++) {
+                let startRow = Math.floor(b / 3) * 3;
+                let startCol = (b % 3) * 3;
+                for (let num = 1; num <= 9; num++) {
+                    let possibleCells = [];
+                    for (let r = 0; r < 3; r++) {
+                        for (let c = 0; c < 3; c++) {
+                            let currR = startRow + r;
+                            let currC = startCol + c;
+                            if (grid[currR][currC] === 0 && this.isValid(grid, currR, currC, num)) {
+                                possibleCells.push({ r: currR, c: currC });
+                            }
+                        }
+                    }
+                    if (possibleCells.length === 1) {
+                        grid[possibleCells[0].r][possibleCells[0].c] = num;
+                        changed = true;
+                    }
+                }
+            }
+        }
+        
+        // 빈칸이 하나도 안 남고 풀렸는지 확인
+        for (let r = 0; r < 9; r++) {
+            for (let c = 0; c < 9; c++) {
+                if (grid[r][c] === 0) return false;
+            }
+        }
+        return true;
+    }
+
     removeNumbers(difficulty) {
-        let attempts;
+        let targetEmptyCells;
         switch (difficulty) {
-            case 'easy': attempts = 30; break;
-            case 'medium': attempts = 45; break;
-            case 'hard': attempts = 55; break;
-            default: attempts = 45;
+            case 'easy': targetEmptyCells = 32; break; // 약 49개 단서 노출
+            case 'medium': targetEmptyCells = 44; break; // 약 37개 단서 노출
+            case 'hard': targetEmptyCells = 52; break; // 약 29개 단서 노출
+            default: targetEmptyCells = 44;
         }
 
         this.initialBoard = this.board.map(row => [...row]);
-        let count = attempts;
-        while (count > 0) {
-            let r = Math.floor(Math.random() * 9);
-            let c = Math.floor(Math.random() * 9);
-            if (this.initialBoard[r][c] !== 0) {
-                this.initialBoard[r][c] = 0;
-                count--;
+        
+        // 전체 81개 셀 좌표 리스트 생성
+        let cellCoords = [];
+        for (let r = 0; r < 9; r++) {
+            for (let c = 0; c < 9; c++) {
+                cellCoords.push({ r, c });
             }
         }
+        this.shuffle(cellCoords);
+
+        let emptyCount = 0;
+        
+        // 셔플된 셀 리스트를 돌며 대칭적으로 빈칸 뚫기 시작
+        for (let coord of cellCoords) {
+            if (emptyCount >= targetEmptyCells) break;
+
+            const r = coord.r;
+            const c = coord.c;
+            const symR = 8 - r;
+            const symC = 8 - c;
+
+            // 이미 비워진 경우 스킵
+            if (this.initialBoard[r][c] === 0) continue;
+
+            const valBackup = this.initialBoard[r][c];
+            const symValBackup = this.initialBoard[symR][symC];
+
+            // 대칭 쌍 임시 제거
+            this.initialBoard[r][c] = 0;
+            this.initialBoard[symR][symC] = 0;
+
+            let isRemovalValid = false;
+
+            // 난이도에 따라 검증 강도 설정
+            // Hard의 경우 좀 더 복잡한 기법이 필요할 수 있으므로 Unique Solution 여부만 체크하고,
+            // Easy와 Medium은 찍기 없이 풀리도록 논리적 솔버 검증을 함께 거칩니다.
+            if (difficulty === 'hard') {
+                isRemovalValid = (this.countSolutions(this.initialBoard) === 1);
+            } else {
+                isRemovalValid = this.isLogicallySolvable(this.initialBoard);
+            }
+
+            if (isRemovalValid) {
+                emptyCount += (r === symR && c === symC) ? 1 : 2;
+            } else {
+                // 실패 시 원상복구
+                this.initialBoard[r][c] = valBackup;
+                this.initialBoard[symR][symC] = symValBackup;
+            }
+        }
+        
         this.board = this.initialBoard.map(row => [...row]);
     }
 
