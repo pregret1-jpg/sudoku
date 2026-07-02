@@ -10,7 +10,6 @@ class SudokuGame {
         this.isGameOver = false;
         this.isMemoMode = false;
         this.history = []; // ◀ 이전 행동들을 저장할 스택 배열 추가
-        this.useNewAlgorithm = true; // ◀ 새 게임 시작 시 토글되어 false(오리지널 랜덤)로 첫 게임이 시작됩니다.
 
         this.initDOM();
         this.addEventListeners();
@@ -27,12 +26,6 @@ class SudokuGame {
         this.themeToggleBtn = document.getElementById('theme-toggle-btn'); // ◀ 다크모드 버튼 추가
         this.messageElement = document.getElementById('message');
         this.difficultyDisplay = document.getElementById('difficulty-display');
-        this.algoDisplayElement = document.getElementById('algo-display'); // ◀ 알고리즘 표시 요소 추가
-        
-        // ◀ 복구 확인 모달 요소 바인딩
-        this.restoreModal = document.getElementById('restore-modal');
-        this.restoreYesBtn = document.getElementById('restore-yes-btn');
-        this.restoreNoBtn = document.getElementById('restore-no-btn');
 
         // ◀ 축하 모달 요소 바인딩
         this.winModal = document.getElementById('win-modal');
@@ -140,19 +133,6 @@ class SudokuGame {
         // 💡 테마 토글 클릭 이벤트 추가
         this.themeToggleBtn.addEventListener('click', () => this.toggleTheme());
 
-        // ◀ 세션 복구 모달 버튼 이벤트 추가
-        if (this.restoreYesBtn && this.restoreNoBtn) {
-            this.restoreYesBtn.addEventListener('click', () => {
-                this.restoreModal.style.display = 'none';
-                this.loadGameState();
-            });
-            this.restoreNoBtn.addEventListener('click', () => {
-                this.restoreModal.style.display = 'none';
-                this.clearSavedState();
-                this.startNewGame();
-            });
-        }
-
         // ◀ 축하 모달 버튼 이벤트 추가
         if (this.winNewGameBtn && this.winCloseBtn) {
             this.winNewGameBtn.addEventListener('click', () => {
@@ -164,12 +144,10 @@ class SudokuGame {
             });
         }
 
-        // ◀ 브라우저 새로고침/탭 닫기 방지 경고 및 나갈 때 타이머 저장
-        window.addEventListener('beforeunload', (e) => {
+        // ◀ 나갈 때 타이머 및 진행 상태 자동 저장 (경고창 없이 바로 저장)
+        window.addEventListener('beforeunload', () => {
             if (!this.isGameOver && this.hasUserMoves()) {
-                this.saveGameState(); // 이탈 시점의 최신 타이머 & 상태 동기화 저장
-                e.preventDefault();
-                e.returnValue = ''; // 브라우저 이탈 방지 창 띄우기
+                this.saveGameState();
             }
         });
     }
@@ -178,12 +156,6 @@ class SudokuGame {
         this.isMemoMode = !this.isMemoMode;
         this.memoBtn.textContent = `메모: ${this.isMemoMode ? 'ON' : 'OFF'}`;
         this.memoBtn.classList.toggle('active', this.isMemoMode);
-    }
-
-    updateAlgoDisplay() {
-        if (this.algoDisplayElement) {
-            this.algoDisplayElement.textContent = `생성: ${this.useNewAlgorithm ? '대칭/추론' : '랜덤'}`;
-        }
     }
 
     startNewGame() {
@@ -195,20 +167,12 @@ class SudokuGame {
         this.history = [];
         this.clearSavedState(); // 신규 게임 생성 시 이전 세션 정보 초기화
 
-        // 알고리즘 방식 번갈아 토글
-        this.useNewAlgorithm = !this.useNewAlgorithm;
-        this.updateAlgoDisplay();
-
         const difficulty = this.difficultySelect.value;
         const difficultyText = this.difficultySelect.options[this.difficultySelect.selectedIndex].text;
         this.difficultyDisplay.textContent = `난이도: ${difficultyText}`;
 
         this.generateSudoku();
-        if (this.useNewAlgorithm) {
-            this.removeNumbersSymmetric(difficulty);
-        } else {
-            this.removeNumbersOriginal(difficulty);
-        }
+        this.removeNumbersSymmetric(difficulty);
         this.renderBoard();
         this.resetTimer();
         this.startTimer();
@@ -217,28 +181,43 @@ class SudokuGame {
 
     generateSudoku() {
         this.board = Array(9).fill().map(() => Array(9).fill(0));
-        this.fillBoard(this.board);
+        this.fillDiagonalBlocks(this.board);
+        this.fillRemaining(this.board, 0);
         this.solution = this.board.map(row => [...row]);
     }
 
-    fillBoard(board) {
-        for (let i = 0; i < 81; i++) {
-            let row = Math.floor(i / 9);
-            let col = i % 9;
-            if (board[row][col] === 0) {
-                let numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9];
-                this.shuffle(numbers);
-                for (let num of numbers) {
-                    if (this.isValid(board, row, col, num)) {
-                        board[row][col] = num;
-                        if (this.fillBoard(board)) return true;
-                        board[row][col] = 0;
-                    }
+    fillDiagonalBlocks(board) {
+        for (let i = 0; i < 9; i += 3) {
+            let numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+            this.shuffle(numbers);
+            let index = 0;
+            for (let r = 0; r < 3; r++) {
+                for (let c = 0; c < 3; c++) {
+                    board[i + r][i + c] = numbers[index++];
                 }
-                return false;
             }
         }
-        return true;
+    }
+
+    fillRemaining(board, i) {
+        if (i >= 81) return true;
+        let row = Math.floor(i / 9);
+        let col = i % 9;
+
+        if (board[row][col] !== 0) {
+            return this.fillRemaining(board, i + 1);
+        }
+
+        let numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+        this.shuffle(numbers);
+        for (let num of numbers) {
+            if (this.isValid(board, row, col, num)) {
+                board[row][col] = num;
+                if (this.fillRemaining(board, i + 1)) return true;
+                board[row][col] = 0;
+            }
+        }
+        return false;
     }
 
     isValid(board, row, col, num) {
@@ -456,28 +435,6 @@ class SudokuGame {
             }
         }
         
-        this.board = this.initialBoard.map(row => [...row]);
-    }
-
-    removeNumbersOriginal(difficulty) {
-        let attempts;
-        switch (difficulty) {
-            case 'easy': attempts = 30; break;
-            case 'medium': attempts = 45; break;
-            case 'hard': attempts = 55; break;
-            default: attempts = 45;
-        }
-
-        this.initialBoard = this.board.map(row => [...row]);
-        let count = attempts;
-        while (count > 0) {
-            let r = Math.floor(Math.random() * 9);
-            let c = Math.floor(Math.random() * 9);
-            if (this.initialBoard[r][c] !== 0) {
-                this.initialBoard[r][c] = 0;
-                count--;
-            }
-        }
         this.board = this.initialBoard.map(row => [...row]);
     }
 
@@ -848,7 +805,6 @@ class SudokuGame {
             memos: serializedMemos,
             timer: this.timer,
             difficulty: this.difficultySelect.value,
-            useNewAlgorithm: this.useNewAlgorithm, // ◀ 생성 알고리즘 종류 저장
             history: serializedHistory,
             isGameOver: this.isGameOver,
             selectedCell: this.selectedCell
@@ -869,10 +825,6 @@ class SudokuGame {
             this.timer = state.timer;
             this.isGameOver = state.isGameOver;
             this.selectedCell = state.selectedCell || { row: 0, col: 0 };
-            
-            // 생성 알고리즘 복구 및 UI 반영
-            this.useNewAlgorithm = state.useNewAlgorithm !== undefined ? state.useNewAlgorithm : false;
-            this.updateAlgoDisplay();
 
             // 배열 형태 메모를 다시 Set 객체로 복원
             this.memos = state.memos.map(row =>
@@ -940,10 +892,13 @@ class SudokuGame {
         if (raw) {
             try {
                 const state = JSON.parse(raw);
-                // 게임이 끝나지 않았고 실질적 액션이 누적된 세션인 경우 복구 모달 열기
+                // 게임이 끝나지 않았고 실질적 액션이 누적된 세션인 경우 자동 복구
                 if (state && !state.isGameOver && (state.history.length > 0 || this.hasSavedMoves(state))) {
-                    this.restoreModal.style.display = 'flex';
-                    return;
+                    if (this.loadGameState()) {
+                        this.messageElement.textContent = "🧩 이전 진행 상황을 이어서 플레이합니다.";
+                        this.messageElement.style.color = "var(--primary-color)";
+                        return;
+                    }
                 }
             } catch (e) {
                 console.error("Error parsing save state:", e);
